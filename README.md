@@ -1,27 +1,25 @@
-# Progetto di Elasticità Non Lineare
+# Project on Non Linear Elasticity Modelling
 
-Progetto di studio e simulazione dell'elasticità non lineare con particolare focus sui modelli costitutivi di Mooney-Rivlin e Gent.
+Study and simulation project on non-linear elasticity with a specific focus on Mooney-Rivlin and Gent constitutive models.
 
-## Contenuto
+## Contents
 
-- **Modelli Analitici**: Implementazione Python dei modelli di Mooney-Rivlin e Gent
-- **Simulazioni ANSYS**: File APDL per simulazioni agli elementi finiti
-- **Analisi Parametriche**: Script per lo sweep di parametri e pressioni
-- **Confronti**: Visualizzazione comparativa tra modelli diversi
+- **Analytical Models**: Python implementation of 2-parameters Mooney-Rivling and Gent Hyperelastic models.
+- **ANSYS Simulations**: APDL scripts for FEM simulations.
 
-## File Principali
+## Main Files
 
-- `analytical_mooney_rivlin.py` - Modello analitico Mooney-Rivlin
-- `analytical_gent.py` - Modello analitico Gent
-- `cilinder_mooney_rivlin.apdl` - Simulazione cilindro Mooney-Rivlin (ANSYS)
-- `cilinder_gent.apdl` - Simulazione cilindro Gent (ANSYS)
-- `pressure_sweep_mooney_rivlin.py` - Analisi con variazione di pressione (Mooney-Rivlin)
-- `pressure_sweep_gent.py` - Analisi con variazione di pressione (Gent)
-- `confronto_modelli.py` - Confronto tra i modelli
+- `analytical_mooney_rivlin.py` - Mooney-Rivlin analytical model
+- `analytical_gent.py` - Gent analytical model
+- `cilinder_mooney_rivlin.apdl` -  Mooney-Rivlin cilinder simulation (ANSYS)
+- `cilinder_gent.apdl` - Gent cilinder simulation (ANSYS)
+- `pressure_sweep_mooney_rivlin.py` - Pressure sweep analysis (Mooney-Rivlin)
+- `pressure_sweep_gent.py` - Pressure sweep analysis (Gent)
+- `confronto_modelli.py` - Model comparison
 
-## Risultati
+## Results
 
-Grafici e risultati delle simulazioni:
-- `confronto_modelli.jpeg` - Confronto visivo dei modelli
-- `grafici_mooney_rivlin.jpeg` - Risultati Mooney-Rivlin
-- `sweep_pressure_*.jpeg` - Analisi parametriche
+Simulations results and graphs:
+- `confronto_modelli.jpeg` - Visual comparison of the studied models
+- `grafici_mooney_rivlin.jpeg` - Mooney-Rivlin results
+- `sweep_pressure.jpeg` - Sweep results 
