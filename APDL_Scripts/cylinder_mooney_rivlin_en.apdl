@@ -1,0 +1,181 @@
+/CLEAR,NOSTART
+/TITLE, Mooney-Rivlin Cylinder - Internal Pressure + Axial Stretch (Arc-Length + ARCTRM + Post-Proc)
+/PREP7
+
+! ============================================================
+! 1. PARAMETERS AND GEOMETRY
+! ============================================================
+R_in  = 10.0      ! Inner radius (mm)
+R_out = 11.0      ! Outer radius (mm)
+H     = 20.0      ! Cylinder height (mm)
+
+P_in_max   = 0.01      ! Maximum internal pressure (MPa) - reference for arc-length
+lambda_z   = 1.5       ! Final imposed axial stretch
+UY_top_max = (lambda_z-1)*H
+
+! Mooney-Rivlin material constants (MPa)
+C10   = 0.1       ! C10 constant
+C01   = 0.5       ! C01 constant
+D1    = 1.0E-4    ! Numerical compressibility (v ~ 0.4999)
+
+! Create rectangular region for 2D axisymmetric analysis
+RECTNG, R_in, R_out, 0, H
+
+! ============================================================
+! 2. ELEMENT DEFINITION AND MATERIAL PROPERTIES
+! ============================================================
+! Define 2D plane strain element (PLANE182)
+ET,1,PLANE182
+KEYOPT,1,3,1       ! Axisymmetric option
+KEYOPT,1,6,1       ! Mixed u-p formulation for nearly incompressible material
+
+! Define hyperelastic material model (Mooney-Rivlin)
+TB,HYPER,1,1,2,MOONEY
+TBDATA,1,C10,C01,D1
+
+! ============================================================
+! 3. MAPPED MESH GENERATION
+! ============================================================
+! Refine mesh along top and bottom edges (axial direction)
+LSEL,S,LOC,Y,0
+LESIZE,ALL,,,10
+LSEL,S,LOC,Y,H
+LESIZE,ALL,,,10
+ALLSEL,ALL
+
+! Refine mesh along inner and outer radii (radial direction)
+LSEL,S,LOC,X,R_in
+LESIZE,ALL,,,80
+LSEL,S,LOC,X,R_out
+LESIZE,ALL,,,80
+ALLSEL,ALL
+
+! Generate mapped mesh
+MSHKEY,1
+AMESH,ALL
+
+! ============================================================
+! 4. REFERENCE NODE/ELEMENT FOR ARCTRM AND POST-PROCESSING
+!    (inner surface at mid-height - away from edge effects
+!     at base and top)
+! ============================================================
+! Select node at inner radius and mid-height
+NSEL, S, LOC, X, R_in
+NSEL, R, LOC, Y, H/2, H/2 + H/40
+*GET, N_COUNT, NODE, 0, COUNT
+*IF, N_COUNT, EQ, 0, THEN
+    *MSG, ERROR, ' '
+    No node found in reference band: check H and mesh.
+*ENDIF
+*GET, N_REF, NODE, 0, NUM, MIN
+ALLSEL, ALL
+
+! Select element attached to reference node
+NSEL, S, NODE, , N_REF
+ESLN, S, 0
+*GET, E_COUNT, ELEM, 0, COUNT
+*IF, E_COUNT, EQ, 0, THEN
+    *MSG, ERROR, ' '
+    No element found connected to reference node: check mesh.
+*ENDIF
+*GET, E_REF, ELEM, 0, NUM, MIN
+ALLSEL, ALL
+
+! *STATUS, N_REF
+! *STATUS, E_REF
+
+! ============================================================
+! 5. SOLUTION SETUP
+! ============================================================
+/SOLU
+! Enable large deformation analysis (geometric nonlinearity)
+NLGEOM, ON
+! Full Newton-Raphson method with reformed matrix
+NROPT, FULL, , ON
+
+! --- Base constraint: UY = 0 at base ---
+LSEL, S, LOC, Y, 0
+NSLL, S, 1
+D, ALL, UY, 0
+ALLSEL, ALL
+
+
+! --- Convergence criteria ---
+CNVTOL, F, , 0.005, 2, 0.01
+CNVTOL, U, , 0.01, 2
+NEQIT, 50
+NCNV, 2
+OUTPR, ALL, ALL
+OUTRES, ESOL, ALL
+
+
+! ============================================================
+! LOAD STEP 2: Enable arc-length, increase ONLY pressure
+!              (axial stretch remains frozen at reached value)
+============================================================
+! Impose axial displacement at top
+NSEL, S, LOC, Y , H
+D, ALL, UY, UY_top_max
+ALLSEL, ALL
+
+! Apply internal pressure to inner surface
+LSEL, S, LOC, X, R_in
+SFL, ALL, PRES, P_in_max
+ALLSEL, ALL
+OUTRES,ALL,ALL
+
+! Enable arc-length method for nonlinear path following
+ARCLEN, ON, 25, 0.0001     ! MAXFACTOR, MINFACTOR
+                           ! Note: LNSRCH/AUTOTS/PRED are disabled
+                           ! automatically by ANSYS with warning: this is expected.
+NSUBST, 30, 30, 30        ! NSBMX as safety net independent from ARCTRM
+
+! --- Termination criterion: stop when radial displacement (UX)
+!     of reference node exceeds 2 times initial inner radius ---
+ARCTRM, U, 100*R_in, N_REF, UX
+
+SOLVE
+FINISH
+
+! ============================================================
+! 6. POST-PROCESSING: Stress-strain curve at reference point
+! ============================================================
+! /POST26
+! FILE, , rst
+
+! NSOL, 2, N_REF, U, X, UX_REF                    ! Radial displacement
+! ESOL, 3, E_REF, N_REF, S, Z, SZ_hoop            ! Hoop stress (true)
+! ESOL, 4, E_REF, N_REF, EPTO, Z, EZ_hoop         ! Hoop strain (true)
+
+! STORE, MERGE
+
+! ! --- Plot stress vs strain ---
+! /AXLAB, X, Circumferential logarithmic strain
+! /AXLAB, Y, Hoop stress (MPa)
+! XVAR, 2
+! PLVAR, 3
+
+! ! --- Print numerical values substep by substep ---
+! PRVAR, 2, 3, 4
+
+! FINISH
+
+
+! /POST26
+! ESOL, 2, E_REF, N_REF, S, X, SR_true      ! Radial
+! ESOL, 3, E_REF, N_REF, S, Y, SZ_true      ! Axial (Y = cylinder axis)
+! ESOL, 4, E_REF, N_REF, S, Z, ST_true      ! Hoop
+! ESOL, 5, E_REF, N_REF, S, XY, SXY_check   ! Shear: should remain ~0
+
+! ! --- True logarithmic strain -> stretch = exp(EPTO) ---
+! ESOL, 6, E_REF, N_REF, EPEL, X, ER_log
+! ESOL, 7, E_REF, N_REF, EPEL, Y, EZ_log
+! ESOL, 8, E_REF, N_REF, EPEL, Z, ET_log
+
+! ! --- Strain energy (total element) and volume ---
+! ESOL, 9,  E_REF, N_REF, SEND, ENTO , SENE_el
+! ESOL, 10, E_REF, N_REF, VOLU, , VOLU_el
+
+! STORE, MERGE
+! PRVAR, 2, 3, 4, 5, 6,
+! PRVAR, 7, 8, 9, 10
